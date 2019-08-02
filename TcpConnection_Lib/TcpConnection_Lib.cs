@@ -3,7 +3,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Text;
 
-namespace TcpConnection_Class
+namespace TcpConnection_Lib
 {
     public class TcpConnection : IDisposable
     {

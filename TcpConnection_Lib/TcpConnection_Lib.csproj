@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>TcpConnection_Lib</AssemblyName>
+    <RootNamespace>TcpConnection_Lib</RootNamespace>
   </PropertyGroup>
 
 </Project>
