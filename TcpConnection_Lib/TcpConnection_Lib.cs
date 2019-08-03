@@ -236,20 +236,32 @@ namespace TcpConnection_Lib
             {
                 while (true)
                 {
-                    client = listener.AcceptTcpClient();
-                    RemoteEndpointAddress = client.Client.RemoteEndPoint.ToString();
-                    client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                    try
+                    {
+                        client = listener.AcceptTcpClient();
+                        RemoteEndpointAddress = client.Client.RemoteEndPoint.ToString();
+                        client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 
-                    if (TcpReaderThread != null)
-                    {
-                        TcpReaderThread.Abort();
-                        TcpReaderThread = null;
+                        if (TcpReaderThread != null)
+                        {
+                            TcpReaderThread.Abort();
+                            TcpReaderThread = null;
+                        }
+                        TcpReaderThread = new Thread(ReadData)
+                        {
+                            IsBackground = true
+                        };
+                        TcpReaderThread.Start();
                     }
-                    TcpReaderThread = new Thread(ReadData)
+                    catch
                     {
-                        IsBackground = true
-                    };
-                    TcpReaderThread.Start();
+                        if (listener != null)
+                        {
+                            listener.Stop();
+                            listener = null;
+                        }
+                        break;
+                    }
                 }
             }
             catch { }
