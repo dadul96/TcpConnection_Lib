@@ -20,6 +20,8 @@ Following properties can be read:
 * **RemoteEndpointAddress** - address of the client that connected to the server
 * **TcpIsConnected** - is true, if a TCP client is connected
 
+An example program can be found in my [TCP_Server_Client_Tester](https://github.com/dadul96/TCP_Server_Client_Tester)-repository.
+
 ### Built With
 * [Visual Studio 2019](https://visualstudio.microsoft.com/) - IDE used for programming
 * [.NET Standard](https://docs.microsoft.com/en-us/dotnet/standard/net-standard) - .NET Standard 2.0 used
