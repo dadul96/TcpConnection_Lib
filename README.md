@@ -2,7 +2,7 @@
 This C# library contains a class for handling the TCP-connection. It provides methods for connecting to a TCP-server or creating your own. In addition, send and receive methods are implemented.
 
 ### Installation
-Either copy the class directy to your code or use the **.dll** provided in [Releases](https://github.com/dadul96/TcpConnection_Lib/releases).
+Either copy the class directly to your code or use the **.dll** provided in [Releases](https://github.com/dadul96/TcpConnection_Lib/releases).
 
 ### Requirements
 The .NET Framework Version of your project should be **4.7.2 or higher**, since this library is build for the .NET Standard 2.0.
@@ -10,9 +10,9 @@ The .NET Framework Version of your project should be **4.7.2 or higher**, since 
 ### How to use
 Following methods can be called:
 * **bool Connect(string IP, int port)** - returns true, if the client could connect to the server
-* **bool Disconnect()** - returns true, if all connections could be succesfully closed
-* **bool Listen(int port)** - returns true, if the listener could be sucessfully started
-* **bool Send(string sendString)** - returns true, if the string could be sucessfully sent
+* **bool Disconnect()** - returns true, if all connections could be successfully closed
+* **bool Listen(int port)** - returns true, if the listener could be successfully started
+* **bool Send(string sendString)** - returns true, if the string could be successfully sent
 * **string GetReceivedString()** - returns the received string or an empty string, if nothing got received
 * **void Dispose()** - runs Disconnect() and disposes everything
 
