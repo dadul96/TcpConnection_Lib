@@ -37,7 +37,7 @@ namespace TcpConnection_Lib
 
         private readonly byte[] receiveBuffer = new byte[8192];
 
-        private readonly object synchLock = new object();
+        private readonly object syncLock = new object();
 
         private readonly object receiveStringLock = new object();
 
@@ -49,7 +49,7 @@ namespace TcpConnection_Lib
             {
                 bool successFlag = false;
 
-                lock (synchLock)
+                lock (syncLock)
                 {
                     try
                     {
@@ -83,7 +83,7 @@ namespace TcpConnection_Lib
         {
             try
             {
-                lock (synchLock)
+                lock (syncLock)
                 {
                     try
                     {
@@ -119,7 +119,7 @@ namespace TcpConnection_Lib
             {
                 bool successFlag = false;
 
-                lock (synchLock)
+                lock (syncLock)
                 {
                     try
                     {
@@ -193,7 +193,7 @@ namespace TcpConnection_Lib
         {
             try
             {
-                lock (synchLock)
+                lock (syncLock)
                 {
                     try
                     {
