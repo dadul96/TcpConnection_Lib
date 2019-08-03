@@ -3,7 +3,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Text;
 using System.Net;
-using System.Collections.Generic;
+using System.Collections;
 
 namespace TcpConnection_Lib
 {
@@ -18,7 +18,7 @@ namespace TcpConnection_Lib
 
         public string RemoteEndpointAddress { get; private set; }
 
-        private readonly Queue<string> ReceivedStringQueue = new Queue<string>();
+        private readonly Queue ReceivedStringQueue = new Queue();
 
         public bool TcpIsConnected
         {
@@ -38,8 +38,6 @@ namespace TcpConnection_Lib
         private readonly byte[] receiveBuffer = new byte[4096];
 
         private readonly object syncLock = new object();
-
-        private readonly object receiveStringLock = new object();
 
 
         //methods:
@@ -142,13 +140,13 @@ namespace TcpConnection_Lib
             {
                 string returnString = "";
 
-                lock (receiveStringLock)
+                lock (ReceivedStringQueue.SyncRoot)
                 {
                     try
                     {
                         if (ReceivedStringQueue.Count > 0)
                         {
-                            returnString = ReceivedStringQueue.Dequeue();
+                            returnString = ReceivedStringQueue.Dequeue().ToString();
                         }
                     }
                     catch { }
@@ -167,8 +165,6 @@ namespace TcpConnection_Lib
             {
                 IPEndPoint ipLocalEndPoint = new IPEndPoint(IPAddress.Any, port);
                 listener = new TcpListener(ipLocalEndPoint);
-                listener.Server.SendTimeout = 1000;
-                listener.Server.ReceiveTimeout = 1000;
                 listener.Start(port);
 
                 if (ListenThread != null)
@@ -297,7 +293,7 @@ namespace TcpConnection_Lib
         {
             try
             {
-                lock (receiveStringLock)
+                lock (ReceivedStringQueue.SyncRoot)
                 {
                     try
                     {
