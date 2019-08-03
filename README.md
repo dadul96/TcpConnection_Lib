@@ -7,6 +7,19 @@ Either copy the class directy to your code or use the **.dll** provided in [Rele
 ### Requirements
 The .NET Framework Version of your project should be **4.7.2 or higher**, since this library is build for the .NET Standard 2.0.
 
+### How to use
+Following methods can be called:
+* **bool Connect(string IP, int port)** - returns true, if the client could connect to the server
+* **bool Disconnect()** - returns true, if all connections could be succesfully closed
+* **bool Listen(int port)** - returns true, if the listener could be sucessfully started
+* **bool Send(string sendString)** - returns true, if the string could be sucessfully sent
+* **string GetReceivedString()** - returns the received string or an empty string, if nothing got received
+* **void Dispose()** - runs Disconnect() and disposes everything
+
+Following properties can be read:
+* **RemoteEndpointAddress** - address of the client that connected to the server
+* **TcpIsConnected** - is true, if a TCP client is connected
+
 ### Built With
 * [Visual Studio 2019](https://visualstudio.microsoft.com/) - IDE used for programming
 * [.NET Standard](https://docs.microsoft.com/en-us/dotnet/standard/net-standard) - .NET Standard 2.0 used
