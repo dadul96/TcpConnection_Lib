@@ -35,7 +35,7 @@ namespace TcpConnection_Lib
             }
         }
 
-        private readonly byte[] receiveBuffer = new byte[8192];
+        private readonly byte[] receiveBuffer = new byte[4096];
 
         private readonly object syncLock = new object();
 
