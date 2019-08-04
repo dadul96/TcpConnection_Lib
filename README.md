@@ -1,11 +1,11 @@
 # TcpConnection_Lib
-This C# library contains a class for handling the TCP-connection. It provides methods for connecting to a TCP-server or creating your own. In addition, send and receive methods are implemented.
+This C# library contains a class for handling the TCP-connection. It provides methods for connecting to a TCP-server or creating your own. Also, send and receive methods are implemented.
 
 ### Installation
 Either copy the class directly to your code or use the **.dll** provided in [Releases](https://github.com/dadul96/TcpConnection_Lib/releases).
 
 ### Requirements
-The .NET Framework Version of your project should be **4.7.2 or higher**, since this library is build for the .NET Standard 2.0.
+The .NET Framework Version of your project should be **4.7.2 or higher** since this library was build for the .NET Standard 2.0.
 
 ### How to use
 Following methods can be called:
