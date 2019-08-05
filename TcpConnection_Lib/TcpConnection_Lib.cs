@@ -172,7 +172,7 @@ namespace TcpConnection_Lib
                     _listenThread.Abort();
                     _listenThread = null;
                 }
-                _listenThread = new Thread(ListeningMethod)
+                _listenThread = new Thread(Listening)
                 {
                     IsBackground = true
                 };
@@ -223,7 +223,7 @@ namespace TcpConnection_Lib
             catch { }
         }
 
-        private void ListeningMethod()
+        private void Listening()
         {
             try
             {
