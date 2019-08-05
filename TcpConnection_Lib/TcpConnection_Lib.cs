@@ -214,10 +214,7 @@ namespace TcpConnection_Lib
                             _tcpReaderThread.Abort();
                             _tcpReaderThread = null;
                         }
-                        if (_receivedDataQueue.Count > 0)
-                        {
-                            _receivedDataQueue.Clear();
-                        }
+                        _receivedDataQueue.Clear();
                     }
                     catch { }
                 }
