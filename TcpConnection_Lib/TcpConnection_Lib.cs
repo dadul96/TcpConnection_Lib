@@ -41,7 +41,7 @@ namespace TcpConnection_Lib
 
 
         //methods:
-        public bool Connect(string IP, int port)
+        public bool TryConnect(string IP, int port)
         {
             try
             {
@@ -77,7 +77,7 @@ namespace TcpConnection_Lib
             }
         }
 
-        public bool Disconnect()
+        public bool TryDisconnect()
         {
             try
             {
@@ -111,7 +111,7 @@ namespace TcpConnection_Lib
             }
         }
 
-        public bool Send(string sendString)
+        public bool TrySend(string sendString)
         {
             try
             {
@@ -159,7 +159,7 @@ namespace TcpConnection_Lib
             }
         }
 
-        public bool Listen(int port)
+        public bool TryListen(int port)
         {
             try
             {
@@ -193,7 +193,7 @@ namespace TcpConnection_Lib
                 {
                     try
                     {
-                        Disconnect();
+                        TryDisconnect();
                         if (_listener != null)
                         {
                             _listener.Stop();
