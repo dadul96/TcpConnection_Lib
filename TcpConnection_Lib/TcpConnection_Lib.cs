@@ -43,107 +43,86 @@ namespace TcpConnection_Lib
         //methods:
         public bool TryConnect(string IP, int port)
         {
-            try
+            lock (_syncLock)
             {
-                bool successFlag = false;
-
-                lock (_syncLock)
+                try
                 {
-                    try
+                    _client = new TcpClient();
+                    _client.Connect(IP, port);
+                    _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+
+                    _tcpReaderThread?.Abort();
+
+                    _tcpReaderThread = new Thread(ReadData)
                     {
-                        _client = new TcpClient();
-                        _client.Connect(IP, port);
-                        _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-
-                        _tcpReaderThread?.Abort();
-
-                        _tcpReaderThread = new Thread(ReadData)
-                        {
-                            IsBackground = true
-                        };
-                        _tcpReaderThread.Start();
-                        successFlag = true;
-                    }
-                    catch { }
+                        IsBackground = true
+                    };
+                    _tcpReaderThread.Start();
+                    return true;
                 }
-                return successFlag;
-            }
-            catch
-            {
-                return false;
+                catch
+                {
+                    return false;
+                }
             }
         }
 
         public bool TryDisconnect()
         {
-            try
+            lock (_syncLock)
             {
-                lock (_syncLock)
+                try
                 {
-                    try
-                    {
-                        _tcpReaderThread?.Abort();
+                    _tcpReaderThread?.Abort();
 
-                        _client?.Client?.Close();
-                        _client?.Close();
+                    _client?.Client?.Close();
+                    _client?.Close();
 
-                        _receivedDataQueue.Clear();
-                    }
-                    catch { }
+                    _receivedDataQueue.Clear();
+                    return true;
                 }
-                return true;
-            }
-            catch
-            {
-                return false;
+                catch
+                {
+                    return false;
+                }
             }
         }
 
         public bool TrySend(string sendString)
         {
-            try
+            lock (_syncLock)
             {
-                bool successFlag = false;
-
-                lock (_syncLock)
+                try
                 {
-                    try
-                    {
-                        _client.Client.Send(ASCIIEncoding.ASCII.GetBytes(sendString));
-                        successFlag = true;
-                    }
-                    catch { }
+                    _client.Client.Send(ASCIIEncoding.ASCII.GetBytes(sendString));
+                    return true;
                 }
-                return successFlag;
-            }
-            catch
-            {
-                return false;
+                catch
+                {
+                    return false;
+                }
             }
         }
 
         public string GetReceivedString()
         {
-            try
+            lock (_receivedDataQueue.SyncRoot)
             {
-                string returnString = "";
-
-                lock (_receivedDataQueue.SyncRoot)
+                try
                 {
-                    try
+                    if (_receivedDataQueue.Count > 0)
                     {
-                        if (_receivedDataQueue.Count > 0)
-                        {
-                            returnString = _receivedDataQueue.Dequeue().ToString();
-                        }
+                        return _receivedDataQueue.Dequeue().ToString();
                     }
-                    catch { }
+                    else
+                    {
+                        return null;
+                    }
                 }
-                return returnString;
-            }
-            catch
-            {
-                return "";
+                catch
+                {
+                    return null;
+                }
             }
         }
 
@@ -172,22 +151,18 @@ namespace TcpConnection_Lib
 
         public void Dispose()
         {
-            try
+            lock (_syncLock)
             {
-                lock (_syncLock)
+                try
                 {
-                    try
-                    {
-                        TryDisconnect();
+                    TryDisconnect();
 
-                        _listener?.Stop();
+                    _listener?.Stop();
 
-                        _listenThread?.Abort();
-                    }
-                    catch { }
+                    _listenThread?.Abort();
                 }
+                catch { }
             }
-            catch { }
         }
 
         private void Listening()
@@ -248,18 +223,14 @@ namespace TcpConnection_Lib
 
         private void CopyReceived(string receivedData)
         {
-            try
+            lock (_receivedDataQueue.SyncRoot)
             {
-                lock (_receivedDataQueue.SyncRoot)
+                try
                 {
-                    try
-                    {
-                        _receivedDataQueue.Enqueue(receivedData);
-                    }
-                    catch { }
+                    _receivedDataQueue.Enqueue(receivedData);
                 }
+                catch { }
             }
-            catch { }
         }
     }
 }
