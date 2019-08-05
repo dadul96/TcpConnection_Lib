@@ -55,11 +55,8 @@ namespace TcpConnection_Lib
                         _client.Connect(IP, port);
                         _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 
-                        if (_tcpReaderThread != null)
-                        {
-                            _tcpReaderThread.Abort();
-                            _tcpReaderThread = null;
-                        }
+                        _tcpReaderThread?.Abort();
+
                         _tcpReaderThread = new Thread(ReadData)
                         {
                             IsBackground = true
@@ -85,21 +82,12 @@ namespace TcpConnection_Lib
                 {
                     try
                     {
-                        if (_tcpReaderThread != null)
-                        {
-                            _tcpReaderThread.Abort();
-                            _tcpReaderThread = null;
-                        }
-                        if (_client != null)
-                        {
-                            _client.Client.Close();
-                            _client.Close();
-                            _client = null;
-                        }
-                        if (_receivedDataQueue.Count > 0)
-                        {
-                            _receivedDataQueue.Clear();
-                        }
+                        _tcpReaderThread?.Abort();
+
+                        _client?.Client?.Close();
+                        _client?.Close();
+
+                        _receivedDataQueue.Clear();
                     }
                     catch { }
                 }
@@ -167,11 +155,8 @@ namespace TcpConnection_Lib
                 _listener = new TcpListener(ipLocalEndPoint);
                 _listener.Start(port);
 
-                if (_listenThread != null)
-                {
-                    _listenThread.Abort();
-                    _listenThread = null;
-                }
+                _listenThread?.Abort();
+
                 _listenThread = new Thread(Listening)
                 {
                     IsBackground = true
@@ -194,31 +179,13 @@ namespace TcpConnection_Lib
                     try
                     {
                         TryDisconnect();
-                        if (_listener != null)
-                        {
-                            _listener.Stop();
-                            _listener = null;
-                        }
-                        if (_client != null)
-                        {
-                            _client.Close();
-                            _client = null;
-                        }
-                        if (_listenThread != null)
-                        {
-                            _listenThread.Abort();
-                            _listenThread = null;
-                        }
-                        if (_tcpReaderThread != null)
-                        {
-                            _tcpReaderThread.Abort();
-                            _tcpReaderThread = null;
-                        }
-                        _receivedDataQueue.Clear();
+
+                        _listener?.Stop();
+
+                        _listenThread?.Abort();
                     }
                     catch { }
                 }
-                GC.SuppressFinalize(this);
             }
             catch { }
         }
@@ -235,11 +202,8 @@ namespace TcpConnection_Lib
                         RemoteEndpointAddress = _client.Client.RemoteEndPoint.ToString();
                         _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 
-                        if (_tcpReaderThread != null)
-                        {
-                            _tcpReaderThread.Abort();
-                            _tcpReaderThread = null;
-                        }
+                        _tcpReaderThread?.Abort();
+
                         _tcpReaderThread = new Thread(ReadData)
                         {
                             IsBackground = true
@@ -248,11 +212,7 @@ namespace TcpConnection_Lib
                     }
                     catch
                     {
-                        if (_listener != null)
-                        {
-                            _listener.Stop();
-                            _listener = null;
-                        }
+                        _listener?.Stop();
                         break;
                     }
                 }
