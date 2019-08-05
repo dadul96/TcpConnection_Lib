@@ -10,23 +10,27 @@ namespace TcpConnection_Lib
     public class TcpConnection : IDisposable
     {
         //fields and properties:
-        private TcpClient client;
-        private TcpListener listener;
+        private TcpClient _client;
+        private TcpListener _listener;
 
-        private Thread ListenThread;
-        private Thread TcpReaderThread;
+        private Thread _listenThread;
+        private Thread _tcpReaderThread;
+
+        private readonly Queue _receivedDataQueue = new Queue();
+
+        private readonly byte[] _receiveBuffer = new byte[4096];
+
+        private readonly object _syncLock = new object();
 
         public string RemoteEndpointAddress { get; private set; }
-
-        private readonly Queue ReceivedStringQueue = new Queue();
 
         public bool TcpIsConnected
         {
             get
             {
-                if (client != null)
+                if (_client != null)
                 {
-                    return client.Connected;
+                    return _client.Connected;
                 }
                 else
                 {
@@ -34,10 +38,6 @@ namespace TcpConnection_Lib
                 }
             }
         }
-
-        private readonly byte[] receiveBuffer = new byte[4096];
-
-        private readonly object syncLock = new object();
 
 
         //methods:
@@ -47,24 +47,24 @@ namespace TcpConnection_Lib
             {
                 bool successFlag = false;
 
-                lock (syncLock)
+                lock (_syncLock)
                 {
                     try
                     {
-                        client = new TcpClient();
-                        client.Connect(IP, port);
-                        client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                        _client = new TcpClient();
+                        _client.Connect(IP, port);
+                        _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 
-                        if (TcpReaderThread != null)
+                        if (_tcpReaderThread != null)
                         {
-                            TcpReaderThread.Abort();
-                            TcpReaderThread = null;
+                            _tcpReaderThread.Abort();
+                            _tcpReaderThread = null;
                         }
-                        TcpReaderThread = new Thread(ReadData)
+                        _tcpReaderThread = new Thread(ReadData)
                         {
                             IsBackground = true
                         };
-                        TcpReaderThread.Start();
+                        _tcpReaderThread.Start();
                         successFlag = true;
                     }
                     catch { }
@@ -81,24 +81,24 @@ namespace TcpConnection_Lib
         {
             try
             {
-                lock (syncLock)
+                lock (_syncLock)
                 {
                     try
                     {
-                        if (TcpReaderThread != null)
+                        if (_tcpReaderThread != null)
                         {
-                            TcpReaderThread.Abort();
-                            TcpReaderThread = null;
+                            _tcpReaderThread.Abort();
+                            _tcpReaderThread = null;
                         }
-                        if (client != null)
+                        if (_client != null)
                         {
-                            client.Client.Close();
-                            client.Close();
-                            client = null;
+                            _client.Client.Close();
+                            _client.Close();
+                            _client = null;
                         }
-                        if (ReceivedStringQueue.Count > 0)
+                        if (_receivedDataQueue.Count > 0)
                         {
-                            ReceivedStringQueue.Clear();
+                            _receivedDataQueue.Clear();
                         }
                     }
                     catch { }
@@ -117,11 +117,11 @@ namespace TcpConnection_Lib
             {
                 bool successFlag = false;
 
-                lock (syncLock)
+                lock (_syncLock)
                 {
                     try
                     {
-                        client.Client.Send(ASCIIEncoding.ASCII.GetBytes(sendString));
+                        _client.Client.Send(ASCIIEncoding.ASCII.GetBytes(sendString));
                         successFlag = true;
                     }
                     catch { }
@@ -140,13 +140,13 @@ namespace TcpConnection_Lib
             {
                 string returnString = "";
 
-                lock (ReceivedStringQueue.SyncRoot)
+                lock (_receivedDataQueue.SyncRoot)
                 {
                     try
                     {
-                        if (ReceivedStringQueue.Count > 0)
+                        if (_receivedDataQueue.Count > 0)
                         {
-                            returnString = ReceivedStringQueue.Dequeue().ToString();
+                            returnString = _receivedDataQueue.Dequeue().ToString();
                         }
                     }
                     catch { }
@@ -164,19 +164,19 @@ namespace TcpConnection_Lib
             try
             {
                 IPEndPoint ipLocalEndPoint = new IPEndPoint(IPAddress.Any, port);
-                listener = new TcpListener(ipLocalEndPoint);
-                listener.Start(port);
+                _listener = new TcpListener(ipLocalEndPoint);
+                _listener.Start(port);
 
-                if (ListenThread != null)
+                if (_listenThread != null)
                 {
-                    ListenThread.Abort();
-                    ListenThread = null;
+                    _listenThread.Abort();
+                    _listenThread = null;
                 }
-                ListenThread = new Thread(ListeningMethod)
+                _listenThread = new Thread(ListeningMethod)
                 {
                     IsBackground = true
                 };
-                ListenThread.Start();
+                _listenThread.Start();
                 return true;
             }
             catch
@@ -189,34 +189,34 @@ namespace TcpConnection_Lib
         {
             try
             {
-                lock (syncLock)
+                lock (_syncLock)
                 {
                     try
                     {
                         Disconnect();
-                        if (listener != null)
+                        if (_listener != null)
                         {
-                            listener.Stop();
-                            listener = null;
+                            _listener.Stop();
+                            _listener = null;
                         }
-                        if (client != null)
+                        if (_client != null)
                         {
-                            client.Close();
-                            client = null;
+                            _client.Close();
+                            _client = null;
                         }
-                        if (ListenThread != null)
+                        if (_listenThread != null)
                         {
-                            ListenThread.Abort();
-                            ListenThread = null;
+                            _listenThread.Abort();
+                            _listenThread = null;
                         }
-                        if (TcpReaderThread != null)
+                        if (_tcpReaderThread != null)
                         {
-                            TcpReaderThread.Abort();
-                            TcpReaderThread = null;
+                            _tcpReaderThread.Abort();
+                            _tcpReaderThread = null;
                         }
-                        if (ReceivedStringQueue.Count > 0)
+                        if (_receivedDataQueue.Count > 0)
                         {
-                            ReceivedStringQueue.Clear();
+                            _receivedDataQueue.Clear();
                         }
                     }
                     catch { }
@@ -234,27 +234,27 @@ namespace TcpConnection_Lib
                 {
                     try
                     {
-                        client = listener.AcceptTcpClient();
-                        RemoteEndpointAddress = client.Client.RemoteEndPoint.ToString();
-                        client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                        _client = _listener.AcceptTcpClient();
+                        RemoteEndpointAddress = _client.Client.RemoteEndPoint.ToString();
+                        _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 
-                        if (TcpReaderThread != null)
+                        if (_tcpReaderThread != null)
                         {
-                            TcpReaderThread.Abort();
-                            TcpReaderThread = null;
+                            _tcpReaderThread.Abort();
+                            _tcpReaderThread = null;
                         }
-                        TcpReaderThread = new Thread(ReadData)
+                        _tcpReaderThread = new Thread(ReadData)
                         {
                             IsBackground = true
                         };
-                        TcpReaderThread.Start();
+                        _tcpReaderThread.Start();
                     }
                     catch
                     {
-                        if (listener != null)
+                        if (_listener != null)
                         {
-                            listener.Stop();
-                            listener = null;
+                            _listener.Stop();
+                            _listener = null;
                         }
                         break;
                     }
@@ -271,19 +271,19 @@ namespace TcpConnection_Lib
 
                 while (true)
                 {
-                    if (!client.Connected)
+                    if (!_client.Connected)
                     {
                         break;
                     }
 
-                    bytesRead = client.GetStream().Read(receiveBuffer, 0, receiveBuffer.Length);
+                    bytesRead = _client.GetStream().Read(_receiveBuffer, 0, _receiveBuffer.Length);
 
                     if (bytesRead == 0)
                     {
                         break;
                     }
 
-                    CopyReceived(Encoding.ASCII.GetString(receiveBuffer, 0, bytesRead));
+                    CopyReceived(Encoding.ASCII.GetString(_receiveBuffer, 0, bytesRead));
                 }
             }
             catch { }
@@ -293,11 +293,11 @@ namespace TcpConnection_Lib
         {
             try
             {
-                lock (ReceivedStringQueue.SyncRoot)
+                lock (_receivedDataQueue.SyncRoot)
                 {
                     try
                     {
-                        ReceivedStringQueue.Enqueue(receivedData);
+                        _receivedDataQueue.Enqueue(receivedData);
                     }
                     catch { }
                 }
