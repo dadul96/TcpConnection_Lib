@@ -210,7 +210,7 @@ namespace TcpConnection_Lib
                         return false;
                     }
 
-                    byte[] sendBuffer = ASCIIEncoding.ASCII.GetBytes(sendString);
+                    byte[] sendBuffer = UTF8Encoding.UTF8.GetBytes(sendString);
                     int sentBytes = _client.Client.Send(sendBuffer);
 
                     if (sentBytes != sendBuffer.Length)
@@ -327,7 +327,7 @@ namespace TcpConnection_Lib
 
                             if (bytesRead != 0)
                             {
-                                _receivedDataQueue.Enqueue(Encoding.ASCII.GetString(_receiveBuffer, 0, bytesRead));
+                                _receivedDataQueue.Enqueue(Encoding.UTF8.GetString(_receiveBuffer, 0, bytesRead));
                             }
                         }
                     }
