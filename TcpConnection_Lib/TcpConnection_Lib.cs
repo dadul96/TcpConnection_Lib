@@ -56,7 +56,7 @@ namespace TcpConnection_Lib
                 {
                     if (TcpIsConnected || _client != null)
                     {
-                        throw new Exception("TryConnect error: Client is already connected!");
+                        return false;
                     }
 
                     _client = new TcpClient();
@@ -89,7 +89,7 @@ namespace TcpConnection_Lib
                 {
                     if (TcpIsConnected || _listener != null)
                     {
-                        throw new Exception("TryListen error: Listener is already running!");
+                        return false;
                     }
 
                     IPEndPoint ipLocalEndPoint = new IPEndPoint(IPAddress.Any, port);
@@ -128,7 +128,8 @@ namespace TcpConnection_Lib
                 {
                     if (TcpIsConnected || _listener != null)
                     {
-                        throw new Exception("TryListen error: Listener is already running!");
+                        RemoteEndpointAddress = null;
+                        return false;
                     }
 
                     IPEndPoint ipLocalEndPoint = new IPEndPoint(IPAddress.Any, port);
@@ -146,7 +147,7 @@ namespace TcpConnection_Lib
                 }
                 catch (SocketException)
                 {
-                    RemoteEndpointAddress = "";
+                    RemoteEndpointAddress = null;
                     return false;
                 }
                 catch (Exception Ex)
@@ -177,10 +178,6 @@ namespace TcpConnection_Lib
                     while (_receivedDataQueue.TryDequeue(out string tempString)) { }    //workaround, because .Clear() is not available in .NET Standard 2.0
 
                     TcpIsConnected = false;
-                }
-                catch (SocketException SockEx)
-                {
-                    throw SockEx;
                 }
                 catch (Exception Ex)
                 {
@@ -254,9 +251,9 @@ namespace TcpConnection_Lib
                 _receivedDataQueue.TryDequeue(out string tempString);
                 return tempString;
             }
-            catch
+            catch (Exception Ex)
             {
-                throw new Exception("GetReceivedString error: General error occurred!");
+                throw Ex;
             }
         }
 
@@ -268,14 +265,9 @@ namespace TcpConnection_Lib
         {
             try
             {
-                if (!(TcpIsConnected = _client.Connected))
+                if (!(TcpIsConnected = _client.Connected) || _threadRunningFlag)
                 {
                     return false;
-                }
-
-                if (_threadRunningFlag == true)
-                {
-                    throw new Exception("TryReadingData error: Already reading data!");
                 }
 
                 readingThread = new Thread(Reading)
@@ -302,14 +294,14 @@ namespace TcpConnection_Lib
             {
                 _threadRunningFlag = false;
 
-                if (readingThread.IsAlive)
+                if (readingThread != null && readingThread.IsAlive)
                 {
                     readingThread.Join();
                 }
             }
-            catch
+            catch (Exception Ex)
             {
-                throw new Exception("StopReadingData error: General error occurred!");
+                throw Ex;
             }
         }
 
@@ -333,12 +325,10 @@ namespace TcpConnection_Lib
                         {
                             bytesRead = stream.Read(_receiveBuffer, 0, _receiveBuffer.Length);
 
-                            if (bytesRead == 0)
+                            if (bytesRead != 0)
                             {
-                                throw new Exception("Reading error: 0 bytes read!");
+                                _receivedDataQueue.Enqueue(Encoding.ASCII.GetString(_receiveBuffer, 0, bytesRead));
                             }
-
-                            _receivedDataQueue.Enqueue(Encoding.ASCII.GetString(_receiveBuffer, 0, bytesRead));
                         }
                     }
                     else
