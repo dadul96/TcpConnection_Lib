@@ -210,13 +210,21 @@ namespace TcpConnection_Lib
                         return false;
                     }
 
-                    byte[] sendBuffer = UTF8Encoding.UTF8.GetBytes(sendString);
-                    int sentBytes = _client.Client.Send(sendBuffer);
+                    NetworkStream stream = _client?.GetStream();
 
-                    if (sentBytes != sendBuffer.Length)
+                    byte[] sendMessageBuffer = UTF8Encoding.UTF8.GetBytes(sendString);
+
+                    int length = sendMessageBuffer.Length;
+
+                    byte[] lengthBuffer = System.BitConverter.GetBytes(length);
+
+                    if (System.BitConverter.IsLittleEndian)
                     {
-                        return false;
+                        Array.Reverse(lengthBuffer);
                     }
+
+                    stream.Write(lengthBuffer, 0, lengthBuffer.Length);
+                    stream.Write(sendMessageBuffer, 0, sendMessageBuffer.Length);
 
                     return true;
                 }
