@@ -26,8 +26,8 @@ An example program can be found in my [TCP_Server_Client_Tester](https://github.
 
 | **TcpConnection_Lib-versions**                                             	|     	| **TCP_Server_Client_Tester-versions**                                             	|
 |---------------------------------------------------------------------------	|-----	|----------------------------------------------------------------------------------	|
-| [1.0.0](https://github.com/dadul96/TcpConnection_Lib/releases/tag/v1.0.0) 	| -> 	| [1.0.0](https://github.com/dadul96/TCP_Server_Client_Tester/releases/tag/v1.0.0) 	|
-| [2.0.0](https://github.com/dadul96/TcpConnection_Lib/releases/tag/v2.0.0) 	| -> 	| [2.0.0](https://github.com/dadul96/TCP_Server_Client_Tester/releases/tag/v2.0.0) 	|
+| [v1.0.0](https://github.com/dadul96/TcpConnection_Lib/releases/tag/v1.0.0) 	| -> 	| [v1.0.0](https://github.com/dadul96/TCP_Server_Client_Tester/releases/tag/v1.0.0) 	|
+| [v2.0.0](https://github.com/dadul96/TcpConnection_Lib/releases/tag/v2.0.0) 	| -> 	| [v2.0.0](https://github.com/dadul96/TCP_Server_Client_Tester/releases/tag/v2.0.0) 	|
 
 ### Built With
 * [Visual Studio 2019](https://visualstudio.microsoft.com/) - IDE used for programming
