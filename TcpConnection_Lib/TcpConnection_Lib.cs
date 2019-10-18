@@ -11,12 +11,6 @@ namespace TcpConnection_Lib
     public class TcpConnection : IDisposable
     {
         //##########################
-        //constants:
-        //##########################
-        private const int RECEIVE_BUFFER_SIZE = 4069; //seems to be a good compromise, but has no specific reason
-
-
-        //##########################
         //fields and properties:
         //##########################
         private TcpClient _client;
@@ -27,8 +21,6 @@ namespace TcpConnection_Lib
         private volatile bool _threadRunningFlag;
 
         private readonly ConcurrentQueue<string> _receivedDataQueue = new ConcurrentQueue<string>();
-
-        private readonly byte[] _receiveBuffer = new byte[RECEIVE_BUFFER_SIZE];
 
         private readonly object _syncRoot = new object();
 
@@ -210,27 +202,31 @@ namespace TcpConnection_Lib
                         return false;
                     }
 
-                    byte[] sendBuffer = UTF8Encoding.UTF8.GetBytes(sendString);
-                    int sentBytes = _client.Client.Send(sendBuffer);
+                    NetworkStream stream = _client?.GetStream();
 
-                    if (sentBytes != sendBuffer.Length)
+                    byte[] sendMessageBuffer = UTF8Encoding.UTF8.GetBytes(sendString);
+
+                    int length = sendMessageBuffer.Length;
+
+                    byte[] lengthBuffer = System.BitConverter.GetBytes(length);
+
+                    if (System.BitConverter.IsLittleEndian)
                     {
-                        return false;
+                        Array.Reverse(lengthBuffer);
                     }
 
+                    stream.Write(lengthBuffer, 0, lengthBuffer.Length);
+                    stream.Write(sendMessageBuffer, 0, sendMessageBuffer.Length);
+
                     return true;
-                }
-                catch (SocketException)
-                {
-                    return false;
                 }
                 catch (ArgumentNullException ArgNulEx)
                 {
                     throw ArgNulEx;
                 }
-                catch (Exception Ex)
+                catch (Exception)
                 {
-                    throw Ex;
+                    return false;
                 }
             }
         }
@@ -305,46 +301,82 @@ namespace TcpConnection_Lib
             }
         }
 
-        /// <summary>
-        /// Private reading method that gets executed in the reading thread (readingThread).
-        /// </summary>
         private void Reading()
         {
             try
             {
-                int bytesRead = 0;
-                NetworkStream stream = _client?.GetStream();
-
                 _threadRunningFlag = true;
 
                 while (_threadRunningFlag)
                 {
                     if ((TcpIsConnected = _client.Connected))
                     {
-                        if (stream.DataAvailable)
-                        {
-                            bytesRead = stream.Read(_receiveBuffer, 0, _receiveBuffer.Length);
+                        byte[] lengthBuffer = ReadBytes(sizeof(int));
 
-                            if (bytesRead != 0)
+                        if (lengthBuffer != null)
+                        {
+                            if (System.BitConverter.IsLittleEndian)
                             {
-                                _receivedDataQueue.Enqueue(Encoding.UTF8.GetString(_receiveBuffer, 0, bytesRead));
+                                Array.Reverse(lengthBuffer);
+                            }
+
+                            int length = System.BitConverter.ToInt32(lengthBuffer, 0);
+
+                            byte[] receiveBuffer;
+
+                            while ((receiveBuffer = ReadBytes(length)) == null && (TcpIsConnected = _client.Connected))
+                            {
+                            }
+
+                            if (receiveBuffer != null)
+                            {
+                                _receivedDataQueue.Enqueue(Encoding.UTF8.GetString(receiveBuffer, 0, length));
                             }
                         }
+
+                        Thread.Sleep(1); //for decreasing the CPU usage
                     }
                     else
                     {
                         _threadRunningFlag = false;
                     }
                 }
-                stream?.Close();
             }
-            catch (ObjectDisposedException ObjDisEx)
+            catch (Exception Ex)
             {
-                throw ObjDisEx;
+                throw Ex;
             }
-            catch (SocketException SockEx)
+        }
+
+        private byte[] ReadBytes(int count)
+        {
+            try
             {
-                throw SockEx;
+                NetworkStream stream = _client?.GetStream();
+
+                byte[] bytes = new byte[count];
+                int readCount = 0;
+
+                while (readCount < count)
+                {
+                    if (stream.DataAvailable)
+                    {
+                        int leftBytes = count - readCount;
+                        int readBytes = stream.Read(bytes, readCount, leftBytes);
+
+                        if (readBytes == 0)
+                        {
+                            return bytes = null;
+                        }
+
+                        readCount += readBytes;
+                    }
+                    else
+                    {
+                        return bytes = null;
+                    }
+                }
+                return bytes;
             }
             catch (Exception Ex)
             {
