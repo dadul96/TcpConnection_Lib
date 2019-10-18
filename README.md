@@ -10,8 +10,8 @@ The .NET Framework Version of your project should be **4.7.2 or higher** since t
 ### How to use
 Following methods can be called:
 * **bool TryConnect(string ipAdress, int port)** - Returns true, if the client could connect to the server.
-* **bool TryListen(int port)** - Returns true, if a client could successfully connect to the listener (server) at the given ```port```.
-* **bool TryListen(int port, out string RemoteEndpointAddress )** - Returns true, if a client could successfully connect to the listener (server) at the given ```port```. In addition, the string-argument ```RemoteEndpointAddress``` is passed by reference.
+* **bool TryListen(int port)** - Returns true, if a client could successfully connect to the listener. (This method is blocking)
+* **bool TryListen(int port, out string RemoteEndpointAddress )** - Returns true, if a client could successfully connect to the listener (server). In addition, the string-argument ```RemoteEndpointAddress``` is passed by reference. (This method is blocking)
 * **void Disconnect()** - Stops reading data, closes the client/listener, clears the receive buffer and sets the ```TcpConnected```-flag to false.
 * **void Dispose()** - Runs ```Disconnect()```.
 * **bool TrySend(string sendString)** - Returns true, if the ```sendString``` could be successfully sent.
@@ -19,7 +19,7 @@ Following methods can be called:
 * **void StopReadingData()** - Stops the "readingThread".
 * **string GetReceivedString()** - Returns the received string or ```null```, if no string was received yet.
 
-Following propertie can be read:
+Following properties can be read:
 * **TcpIsConnected** - Is true, if a working TCP connection exists.
 
 An example program can be found in my [TCP_Server_Client_Tester](https://github.com/dadul96/TCP_Server_Client_Tester)-repository.
