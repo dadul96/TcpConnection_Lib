@@ -1,308 +1,391 @@
-﻿using System;
+﻿//################
+//version: 2.0.0
+//################
+
+using System;
 using System.Net.Sockets;
 using System.Threading;
 using System.Text;
 using System.Net;
-using System.Collections;
+using System.Collections.Concurrent;
+using System.Threading.Tasks;
 
 namespace TcpConnection_Lib
 {
     public class TcpConnection : IDisposable
     {
+        //##########################
         //fields and properties:
-        private TcpClient client;
-        private TcpListener listener;
+        //##########################
+        private TcpClient _client;
+        private TcpListener _listener;
 
-        private Thread ListenThread;
-        private Thread TcpReaderThread;
+        private Thread readingThread;
 
-        public string RemoteEndpointAddress { get; private set; }
+        private volatile bool _threadRunningFlag;
 
-        private readonly Queue ReceivedStringQueue = new Queue();
+        private readonly ConcurrentQueue<string> _receivedDataQueue = new ConcurrentQueue<string>();
 
-        public bool TcpIsConnected
+        private readonly object _syncRoot = new object();
+
+        /// <summary>
+        /// <c>TcpIsConnected</c> returns a boolean value that signals the TCP connection state.
+        /// </summary>
+        public bool TcpIsConnected { get; private set; }
+
+
+        //##########################
+        //methods:
+        //##########################
+
+        /// <summary>
+        /// Try connecting a client to a specific endpoint.
+        /// </summary>
+        /// <param name="ipAddress"></param>
+        /// <param name="port"></param>
+        /// <returns>True, if a connection could be accomplished.</returns>
+        public bool TryConnect(string ipAddress, int port)
         {
-            get
+            lock (_syncRoot)
             {
-                if (client != null)
+                try
                 {
-                    return client.Connected;
+                    if (TcpIsConnected || _client != null)
+                    {
+                        return false;
+                    }
+
+                    _client = new TcpClient();
+                    _client.Connect(ipAddress, port);
+                    _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+
+                    return TcpIsConnected = _client.Connected;
                 }
-                else
+                catch (SocketException)
+                {
+                    return false;
+                }
+                catch (Exception Ex)
+                {
+                    throw Ex;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Try to listen for clients on a specific port and any available IP address.
+        /// </summary>
+        /// <param name="port"></param>
+        /// <returns>True, if a connection could be accomplished.</returns>
+        public bool TryListen(int port)
+        {
+            lock (_syncRoot)
+            {
+                try
+                {
+                    if (TcpIsConnected || _listener != null)
+                    {
+                        return false;
+                    }
+
+                    IPEndPoint ipLocalEndPoint = new IPEndPoint(IPAddress.Any, port);
+                    _listener = new TcpListener(ipLocalEndPoint);
+                    _listener.Start(port);
+
+                    _client = _listener.AcceptTcpClient();
+                    _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+
+                    _listener?.Stop();
+
+                    return TcpIsConnected = _client.Connected;
+                }
+                catch (SocketException)
+                {
+                    return false;
+                }
+                catch (Exception Ex)
+                {
+                    throw Ex;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Try to listen for clients on a specific port and any available IP address and pass the string-argument "RemoteEndpointAddress" by reference.
+        /// </summary>
+        /// <param name="port"></param>
+        /// <param name="RemoteEndpointAddress"></param>
+        /// <returns>True, if a connection could be accomplished.</returns>
+        public bool TryListen(int port, out string RemoteEndpointAddress)
+        {
+            lock (_syncRoot)
+            {
+                try
+                {
+                    if (TcpIsConnected || _listener != null)
+                    {
+                        RemoteEndpointAddress = null;
+                        return false;
+                    }
+
+                    IPEndPoint ipLocalEndPoint = new IPEndPoint(IPAddress.Any, port);
+                    _listener = new TcpListener(ipLocalEndPoint);
+                    _listener.Start(port);
+
+                    _client = _listener.AcceptTcpClient();
+                    _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+
+                    RemoteEndpointAddress = _client.Client.RemoteEndPoint.ToString();
+
+                    _listener?.Stop();
+
+                    return TcpIsConnected = _client.Connected;
+                }
+                catch (SocketException)
+                {
+                    RemoteEndpointAddress = null;
+                    return false;
+                }
+                catch (Exception Ex)
+                {
+                    throw Ex;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stop the data reading, close the client/listener, clear the _receivedDataQueue and set the TcpIsConnected-flag to false.
+        /// </summary>
+        public void Disconnect()
+        {
+            lock (_syncRoot)
+            {
+                try
+                {
+                    StopReadingData();
+
+                    _client?.Client?.Close();
+                    _client?.Close();
+                    _client = null;
+
+                    _listener?.Stop();
+                    _listener = null;
+
+                    while (_receivedDataQueue.TryDequeue(out string tempString)) { }    //workaround, because .Clear() is not available in .NET Standard 2.0
+
+                    TcpIsConnected = false;
+                }
+                catch (Exception Ex)
+                {
+                    throw Ex;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Run the Disconnect()-method.
+        /// </summary>
+        public void Dispose()
+        {
+            Disconnect();
+        }
+
+        /// <summary>
+        /// Try sending the sendString.
+        /// </summary>
+        /// <param name="sendString"></param>
+        /// <returns>True, if the sending was successful.</returns>
+        public bool TrySend(string sendString)
+        {
+            lock (_syncRoot)
+            {
+                try
+                {
+                    if (!(TcpIsConnected = _client.Connected))
+                    {
+                        return false;
+                    }
+
+                    NetworkStream stream = _client?.GetStream();
+
+                    byte[] sendMessageBuffer = UTF8Encoding.UTF8.GetBytes(sendString);
+
+                    int length = sendMessageBuffer.Length;
+
+                    byte[] lengthBuffer = System.BitConverter.GetBytes(length);
+
+                    if (System.BitConverter.IsLittleEndian)
+                    {
+                        Array.Reverse(lengthBuffer);
+                    }
+
+                    stream.Write(lengthBuffer, 0, lengthBuffer.Length);
+                    stream.Write(sendMessageBuffer, 0, sendMessageBuffer.Length);
+
+                    return true;
+                }
+                catch (ArgumentNullException ArgNulEx)
+                {
+                    throw ArgNulEx;
+                }
+                catch (Exception)
                 {
                     return false;
                 }
             }
         }
 
-        private readonly byte[] receiveBuffer = new byte[4096];
-
-        private readonly object syncLock = new object();
-
-
-        //methods:
-        public bool Connect(string IP, int port)
-        {
-            try
-            {
-                bool successFlag = false;
-
-                lock (syncLock)
-                {
-                    try
-                    {
-                        client = new TcpClient();
-                        client.Connect(IP, port);
-                        client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-
-                        if (TcpReaderThread != null)
-                        {
-                            TcpReaderThread.Abort();
-                            TcpReaderThread = null;
-                        }
-                        TcpReaderThread = new Thread(ReadData)
-                        {
-                            IsBackground = true
-                        };
-                        TcpReaderThread.Start();
-                        successFlag = true;
-                    }
-                    catch { }
-                }
-                return successFlag;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public bool Disconnect()
-        {
-            try
-            {
-                lock (syncLock)
-                {
-                    try
-                    {
-                        if (TcpReaderThread != null)
-                        {
-                            TcpReaderThread.Abort();
-                            TcpReaderThread = null;
-                        }
-                        if (client != null)
-                        {
-                            client.Client.Close();
-                            client.Close();
-                            client = null;
-                        }
-                        if (ReceivedStringQueue.Count > 0)
-                        {
-                            ReceivedStringQueue.Clear();
-                        }
-                    }
-                    catch { }
-                }
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public bool Send(string sendString)
-        {
-            try
-            {
-                bool successFlag = false;
-
-                lock (syncLock)
-                {
-                    try
-                    {
-                        client.Client.Send(ASCIIEncoding.ASCII.GetBytes(sendString));
-                        successFlag = true;
-                    }
-                    catch { }
-                }
-                return successFlag;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
+        /// <summary>
+        /// Polling method for checking, if a new string was added to the _receivedDataQueue.
+        /// </summary>
+        /// <returns>NULL, if the queue is empty. Otherwise the string will be returned.</returns>
         public string GetReceivedString()
         {
             try
             {
-                string returnString = "";
-
-                lock (ReceivedStringQueue.SyncRoot)
+                if (_receivedDataQueue.IsEmpty)
                 {
-                    try
-                    {
-                        if (ReceivedStringQueue.Count > 0)
-                        {
-                            returnString = ReceivedStringQueue.Dequeue().ToString();
-                        }
-                    }
-                    catch { }
+                    return null;
                 }
-                return returnString;
+
+                _receivedDataQueue.TryDequeue(out string tempString);
+                return tempString;
             }
-            catch
+            catch (Exception Ex)
             {
-                return "";
+                throw Ex;
             }
         }
 
-        public bool Listen(int port)
+        /// <summary>
+        /// Try to start the reading thread.
+        /// </summary>
+        /// <returns>True, if the thread could be successfully started.</returns>
+        public bool TryReadingData()
         {
             try
             {
-                IPEndPoint ipLocalEndPoint = new IPEndPoint(IPAddress.Any, port);
-                listener = new TcpListener(ipLocalEndPoint);
-                listener.Start(port);
-
-                if (ListenThread != null)
+                if (!(TcpIsConnected = _client.Connected) || _threadRunningFlag)
                 {
-                    ListenThread.Abort();
-                    ListenThread = null;
+                    return false;
                 }
-                ListenThread = new Thread(ListeningMethod)
+
+                readingThread = new Thread(Reading)
                 {
                     IsBackground = true
                 };
-                ListenThread.Start();
+
+                readingThread.Start();
+
                 return true;
             }
-            catch
+            catch (Exception Ex)
             {
-                return false;
+                throw Ex;
             }
         }
 
-        public void Dispose()
+        /// <summary>
+        /// Stops the reading thread.
+        /// </summary>
+        public void StopReadingData()
         {
             try
             {
-                lock (syncLock)
+                _threadRunningFlag = false;
+
+                if (readingThread != null && readingThread.IsAlive)
                 {
-                    try
-                    {
-                        Disconnect();
-                        if (listener != null)
-                        {
-                            listener.Stop();
-                            listener = null;
-                        }
-                        if (client != null)
-                        {
-                            client.Close();
-                            client = null;
-                        }
-                        if (ListenThread != null)
-                        {
-                            ListenThread.Abort();
-                            ListenThread = null;
-                        }
-                        if (TcpReaderThread != null)
-                        {
-                            TcpReaderThread.Abort();
-                            TcpReaderThread = null;
-                        }
-                        if (ReceivedStringQueue.Count > 0)
-                        {
-                            ReceivedStringQueue.Clear();
-                        }
-                    }
-                    catch { }
+                    readingThread.Join();
                 }
-                GC.SuppressFinalize(this);
             }
-            catch { }
+            catch (Exception Ex)
+            {
+                throw Ex;
+            }
         }
 
-        private void ListeningMethod()
+        private void Reading()
         {
             try
             {
-                while (true)
-                {
-                    try
-                    {
-                        client = listener.AcceptTcpClient();
-                        RemoteEndpointAddress = client.Client.RemoteEndPoint.ToString();
-                        client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                _threadRunningFlag = true;
 
-                        if (TcpReaderThread != null)
-                        {
-                            TcpReaderThread.Abort();
-                            TcpReaderThread = null;
-                        }
-                        TcpReaderThread = new Thread(ReadData)
-                        {
-                            IsBackground = true
-                        };
-                        TcpReaderThread.Start();
-                    }
-                    catch
+                while (_threadRunningFlag)
+                {
+                    if ((TcpIsConnected = _client.Connected))
                     {
-                        if (listener != null)
+                        byte[] lengthBuffer = ReadBytes(sizeof(int));
+
+                        if (lengthBuffer != null)
                         {
-                            listener.Stop();
-                            listener = null;
+                            if (System.BitConverter.IsLittleEndian)
+                            {
+                                Array.Reverse(lengthBuffer);
+                            }
+
+                            int length = System.BitConverter.ToInt32(lengthBuffer, 0);
+
+                            byte[] receiveBuffer;
+
+                            while ((receiveBuffer = ReadBytes(length)) == null && (TcpIsConnected = _client.Connected))
+                            {
+                            }
+
+                            if (receiveBuffer != null)
+                            {
+                                _receivedDataQueue.Enqueue(Encoding.UTF8.GetString(receiveBuffer, 0, length));
+                            }
                         }
-                        break;
+
+                        Thread.Sleep(1); //for decreasing the CPU usage
+                    }
+                    else
+                    {
+                        _threadRunningFlag = false;
                     }
                 }
             }
-            catch { }
+            catch (Exception Ex)
+            {
+                throw Ex;
+            }
         }
 
-        private void ReadData()
+        private byte[] ReadBytes(int count)
         {
             try
             {
-                int bytesRead = 0;
+                NetworkStream stream = _client?.GetStream();
 
-                while (true)
+                byte[] bytes = new byte[count];
+                int readCount = 0;
+
+                while (readCount < count)
                 {
-                    if (!client.Connected)
+                    if (stream.DataAvailable)
                     {
-                        break;
+                        int leftBytes = count - readCount;
+                        int readBytes = stream.Read(bytes, readCount, leftBytes);
+
+                        if (readBytes == 0)
+                        {
+                            return bytes = null;
+                        }
+
+                        readCount += readBytes;
                     }
-
-                    bytesRead = client.GetStream().Read(receiveBuffer, 0, receiveBuffer.Length);
-
-                    if (bytesRead == 0)
+                    else
                     {
-                        break;
+                        return bytes = null;
                     }
-
-                    CopyReceived(Encoding.ASCII.GetString(receiveBuffer, 0, bytesRead));
                 }
+                return bytes;
             }
-            catch { }
-        }
-
-        private void CopyReceived(string receivedData)
-        {
-            try
+            catch (Exception Ex)
             {
-                lock (ReceivedStringQueue.SyncRoot)
-                {
-                    try
-                    {
-                        ReceivedStringQueue.Enqueue(receivedData);
-                    }
-                    catch { }
-                }
+                throw Ex;
             }
-            catch { }
         }
     }
 }
