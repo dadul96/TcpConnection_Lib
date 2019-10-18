@@ -1,4 +1,4 @@
-# TcpConnection_Lib (outdated README)
+# TcpConnection_Lib
 This C# library contains a class for handling the TCP-connection. It provides methods for connecting to a TCP-server or creating your own. Also, send and receive methods are implemented.
 
 ### Installation
