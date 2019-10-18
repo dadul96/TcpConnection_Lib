@@ -1,4 +1,4 @@
-# TcpConnection_Lib (outdated README)
+# TcpConnection_Lib (v2.0.0)
 This C# library contains a class for handling the TCP-connection. It provides methods for connecting to a TCP-server or creating your own. Also, send and receive methods are implemented.
 
 ### Installation
@@ -9,18 +9,25 @@ The .NET Framework Version of your project should be **4.7.2 or higher** since t
 
 ### How to use
 Following methods can be called:
-* **bool Connect(string IP, int port)** - returns true, if the client could connect to the server
-* **bool Disconnect()** - returns true, if all connections could be successfully closed
-* **bool Listen(int port)** - returns true, if the listener could be successfully started
-* **bool Send(string sendString)** - returns true, if the string could be successfully sent
-* **string GetReceivedString()** - returns the received string or an empty string, if nothing got received
-* **void Dispose()** - runs Disconnect() and disposes everything
+* **bool TryConnect(string ipAdress, int port)** - Returns true, if the client could connect to the server.
+* **bool TryListen(int port)** - Returns true, if a client could successfully connect to the listener. (This method is blocking)
+* **bool TryListen(int port, out string RemoteEndpointAddress )** - Returns true, if a client could successfully connect to the listener (server). In addition, the string-argument ```RemoteEndpointAddress``` is passed by reference. (This method is blocking)
+* **void Disconnect()** - Stops reading data, closes the client/listener, clears the receive buffer and sets the ```TcpConnected```-flag to false.
+* **void Dispose()** - Runs ```Disconnect()```.
+* **bool TrySend(string sendString)** - Returns true, if the ```sendString``` could be successfully sent.
+* **bool TryReadingData()** - Returns true, if the "readingThread" could be successfully started.
+* **void StopReadingData()** - Stops the "readingThread".
+* **string GetReceivedString()** - Returns the received string or ```null```, if no string was received yet.
 
 Following properties can be read:
-* **RemoteEndpointAddress** - address of the client that connected to the server
-* **TcpIsConnected** - is true, if a TCP client is connected
+* **TcpIsConnected** - Is true, if a working TCP connection exists.
 
 An example program can be found in my [TCP_Server_Client_Tester](https://github.com/dadul96/TCP_Server_Client_Tester)-repository.
+
+| **TcpConnection_Lib-versions**                                             	|     	| **TCP_Server_Client_Tester-versions**                                             	|
+|---------------------------------------------------------------------------	|-----	|----------------------------------------------------------------------------------	|
+| [v1.0.0](https://github.com/dadul96/TcpConnection_Lib/releases/tag/v1.0.0) 	| -> 	| [v1.0.0](https://github.com/dadul96/TCP_Server_Client_Tester/releases/tag/v1.0.0) 	|
+| [v2.0.0](https://github.com/dadul96/TcpConnection_Lib/releases/tag/v2.0.0) 	| -> 	| [v2.0.0](https://github.com/dadul96/TCP_Server_Client_Tester/releases/tag/v2.0.0) 	|
 
 ### Built With
 * [Visual Studio 2019](https://visualstudio.microsoft.com/) - IDE used for programming

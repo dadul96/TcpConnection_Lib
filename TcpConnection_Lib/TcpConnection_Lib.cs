@@ -1,4 +1,8 @@
-﻿using System;
+﻿//################
+//version: 2.0.0
+//################
+
+using System;
 using System.Net.Sockets;
 using System.Threading;
 using System.Text;
